@@ -12,70 +12,96 @@ import java.io.InputStreamReader;
 
 public class ParserService extends Thread {
 
+    private String tagName;
+    private String attrName;
+    private String attrValue;
+    private String[] args;
+
+    public ParserService(String[] args){
+        this.args = args;
+    }
+    public void setTagName(String tagName){
+        this.tagName = tagName;
+    }
+
+    public void setAttrName(String attrName) {
+        this.attrName = attrName;
+    }
+
+    public void setAttrValue(String attrValue) {
+        this.attrValue = attrValue;
+    }
+
     @Override
     public void run() {
+        String pathToFile;
+        if (args.length == 0){
+            pathToFile = getFromConsole();
+        } else {
+            pathToFile = args[0];
+        }
+        File htmlFile = new File(pathToFile);
+        System.out.println(getPerson(htmlFile,tagName));
+    }
+
+    private String getFromConsole() {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
             System.out.println("Please write the full path to file you want to parse!");
-            String pathToFile = reader.readLine();
-            File htmlFile = new File(pathToFile);
-            System.out.println(getPerson(htmlFile));
+            return reader.readLine();
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+        return "";
     }
 
-    public String getPerson(File htmlFile) {
-        if (htmlFile.getName().endsWith(".html")) {
-            try {
-                Document html = Jsoup.parse(htmlFile, "UTF-8");
-                return getPerson(html);
-            } catch (IOException e) {
-                return "File not found!";
-            }
-        } else {
-            return "File is not html. I can parse only html!";
+    public String getPerson(File htmlFile, String tagName) {
+        try {
+            Document html = Jsoup.parse(htmlFile, "UTF-8");
+            return getPerson(html, tagName);
+        } catch (IOException e) {
+            return "File not found!";
         }
     }
 
-    private String getPerson(Document html) {
+    private String getPerson(Document html,String tagName) {
         Element body = html.body();
-        Elements p = body.getElementsByTag("p");
+        Elements p = body.getElementsByTag(tagName);
         return getPerson(p);
     }
 
     private String getPerson(Elements p) {
-        String attrName = "class";
-        String attrValue = "full_name";
         String currentAttrValue = p.attr(attrName);
 
         if (p.hasAttr(attrName) && currentAttrValue.equals(attrValue)) {
             String fullName = p.text();
             String[] fullNameList = fullName.trim().split("\\s+");
-
             try {
                 return getPerson(fullNameList);
             } catch (PersonFullNameException ex) {
                 return ex.getMessage();
             }
         }
-        return "There is no such tag or tag don`t have attribute class or class value is not full_name";
-    }
 
+        return "File does not have valid data";
+    }
 
     private String getPerson(String[] names) {
         String template = "Great! We have found second name:";
-        if (names.length > 3) {
-            throw new PersonFullNameException("Oops! It seems, it`s something difficult :(");
-        }
-        if (names[0].isEmpty()) {
+
+        if (names[0].isEmpty()){
             throw new PersonFullNameException("Tag <p> is empty!");
         }
-        if (names.length == 1) {
-            return String.format("Great! We have found name: %s!", names[0]);
-        } else if (names.length == 2) {
-            return String.format("%s %s, name: %s!", template, names[0], names[1]);
-        } else {
-            return String.format("%s %s, name: %s, third name: %s!", template, names[0], names[1], names[2]);
+
+        switch (names.length){
+
+            case (1) : return String.format("Great! We have found name: %s!", names[0]);
+
+            case (2) : return String.format("%s %s, name: %s!", template, names[0], names[1]);
+
+            case (3) : return String.format("%s %s, name: %s, third name: %s!", template, names[0], names[1], names[2]);
+
+            default :  throw new PersonFullNameException("Oops! It seems, it`s something difficult :(");
         }
+
     }
 }
